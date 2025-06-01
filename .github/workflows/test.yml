@@ -2,7 +2,7 @@ name: Auto Update 1
 
 on:
   schedule:
-    - cron: '*/25 * * * *'  # Every 25 minutes
+    - cron: '*/40 * * * *'  # Every 40 minutes
   workflow_dispatch:
 
 jobs:
@@ -31,29 +31,17 @@ jobs:
         if: always()
         run: rm -f run.py
 
-      # ⛔️ REMOVE source commit step
-      # - name: Commit Changes
-      #   run: |
-      #     git config --local user.email "action@github.com"
-      #     git config --local user.name "GitHub Action"
-      #     git add playlist.m3u
-      #     git diff --quiet && git diff --staged --quiet || git commit -m "Auto update playlist.m3u"
-
-      # ⛔️ REMOVE Push to source
-      # - name: Push Changes to Source Repo
-      #   uses: ad-m/github-push-action@v0.6.0
-      #   with:
-      #     github_token: ${{ secrets.GITHUB_TOKEN }}
-      #     branch: main
-
+      
       - name: Clone Target Repo
         run: |
           git clone https://x-access-token:${{ secrets.TARGET_REPO_TOKEN }}@${{ secrets.TARGET_REPO_URL }} ${{ secrets.TARGET_REPO_NAME }}
 
+      
       - name: Copy Files to Target Repo
         run: |
           cp playlist.m3u ${{ secrets.TARGET_REPO_NAME }}/
 
+      
       - name: Commit & Push to Target Repo
         run: |
           cd ${{ secrets.TARGET_REPO_NAME }}
@@ -61,4 +49,17 @@ jobs:
           git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"
           git add .
           git commit -m "Synced playlist.m3u from source on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+          git push
+
+      
+      - name: Update README in Source Repo
+        run: |
+          echo "✅ Hi Complete – Synced on $(date '+%Y-%m-%d %H:%M:%S')" >> README.md
+
+      - name: Commit README Update
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add README.md
+          git commit -m "Updated README with sync status" || echo "No changes"
           git push
