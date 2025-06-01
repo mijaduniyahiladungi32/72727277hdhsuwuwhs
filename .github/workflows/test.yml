@@ -22,7 +22,7 @@ jobs:
         run: pip install requests
 
       - name: Unzip Protected Script
-        run: unzip -P ${{ secrets.ZIP_PASSWORD2 }} run.zip
+        run: unzip -P ${{ secrets.ZIP_PASSWORD2 }} test.zip
 
       - name: Run Python Script
         run: python run.py
@@ -35,8 +35,8 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add yuppie-fta.json yuppie-fta.m3u8
-          git diff --quiet && git diff --staged --quiet || git commit -m "Auto update yuppie-fta.json and yuppie-fta.m3u8"
+          git add playlist.m3u
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto update playlist.m3u"
 
       - name: Push Changes to Source Repo
         uses: ad-m/github-push-action@v0.6.0
@@ -50,7 +50,7 @@ jobs:
 
       - name: Copy Files to Target Repo
         run: |
-          cp yuppie-fta.json yuppie-fta.m3u8 ${{ secrets.TARGET_REPO_NAME }}/
+          cp playlist.m3u ${{ secrets.TARGET_REPO_NAME }}/
 
       - name: Commit & Push to Target Repo
         run: |
