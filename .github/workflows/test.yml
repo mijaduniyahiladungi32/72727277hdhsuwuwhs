@@ -52,14 +52,14 @@ jobs:
           git push
 
       
-      - name: Update README in Source Repo
+      - name: Update log in Source Repo
         run: |
-          echo "✅ Hi Complete – Synced on $(date '+%Y-%m-%d %H:%M:%S')" >> README.md
+          echo "✅ Hi Complete – Synced on $(date '+%Y-%m-%d %H:%M:%S')" >> error.log
 
-      - name: Commit README Update
+      - name: Commit log Update
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add README.md
-          git commit -m "Updated README with sync status" || echo "No changes"
+          git add error.log
+          git commit -m "Updated log with sync status" || echo "No changes"
           git push
