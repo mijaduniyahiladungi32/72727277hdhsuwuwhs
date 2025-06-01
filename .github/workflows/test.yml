@@ -1,0 +1,74 @@
+name: Auto Update 1
+
+on:
+  schedule:
+    - cron: '*/35 * * * *'  # Every 25 minutes
+  workflow_dispatch:
+
+jobs:
+  update-files:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
+        run: pip install requests
+
+      - name: Unzip Protected Script
+        run: unzip -P ${{ secrets.ZIP_PASSWORD2 }} run.zip
+
+      - name: Run Python Script
+        run: python run.py
+
+      - name: Delete Script After Run
+        if: always()
+        run: rm -f run.py
+
+      - name: Commit Changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add yuppie-fta.json yuppie-fta.m3u8
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto update yuppie-fta.json and yuppie-fta.m3u8"
+
+      - name: Push Changes to Source Repo
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
+
+      - name: Clone Target Repo
+        run: |
+          git clone https://x-access-token:${{ secrets.TARGET_REPO_TOKEN }}@${{ secrets.TARGET_REPO_URL }} ${{ secrets.TARGET_REPO_NAME }}
+
+      - name: Copy Files to Target Repo
+        run: |
+          cp yuppie-fta.json yuppie-fta.m3u8 ${{ secrets.TARGET_REPO_NAME }}/
+
+      - name: Commit & Push to Target Repo
+        run: |
+          cd ${{ secrets.TARGET_REPO_NAME }}
+          git config user.name "${{ secrets.TARGET_REPO_USER }}"
+          git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"
+          git add .
+          git commit -m "Synced files from source on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+          git push
+
+      - name: Update README in Source Repo
+        run: |
+          echo "✅ Hi Complete – Synced on $(date '+%Y-%m-%d %H:%M:%S')" >> README.md
+
+      - name: Commit README Update
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add README.md
+          git commit -m "Updated README with sync status" || echo "No changes"
+          git push
