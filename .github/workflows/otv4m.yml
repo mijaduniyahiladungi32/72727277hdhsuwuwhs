@@ -2,8 +2,8 @@ name: Auto Update & Push Playlist
 
 on:
   schedule:
-    - cron: '0 */4 * * *'  # Runs every 6 hours
-  workflow_dispatch:       # Allows manual trigger
+    - cron: '0 */4 * * *'  # Runs every 4 hours
+  workflow_dispatch:       # Allows
 
 jobs:
   update-playlist:
@@ -18,7 +18,7 @@ jobs:
 
     - name: Unzip protected Python script
       env:
-        ZIP_PASS: ${{ secrets.ZI_FILE2 }}
+        ZIP_PASS: ${{ secrets.ZI_FILE3 }}
       run: unzip -P "$ZIP_PASS" run.zip
 
     - name: Run Python script
