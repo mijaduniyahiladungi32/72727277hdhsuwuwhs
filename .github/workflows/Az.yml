@@ -2,7 +2,7 @@ name: Auto Update & Push Playlist
 
 on:
   schedule:
-    - cron: '0 */1 * * *'  # Runs every 6 hours
+    - cron: '0 */6 * * *'  # Runs every 6 hours (change to */1 if you want every hour)
   workflow_dispatch:       # Allows manual trigger
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
     - name: Unzip protected Python script
       env:
         ZIP_PASS: ${{ secrets.ZIP_FILEAZ }}
-      run: unzip -P "$ZIP_FILEAZ" az.zip
+      run: unzip -o -P "$ZIP_PASS" az.zip
 
     - name: Run Python script
       run: python az.py
@@ -33,7 +33,7 @@ jobs:
         git clone https://x-access-token:${{ secrets.TARGET_TOKEN2 }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAME }}
 
     - name: Copy playlist to target repository
-      run: cp z5.m3u ${{ secrets.TARGET_NAME }}/
+      run: cp z5.m3u ${{ secrets.TARGET_NAME }}/playlist.m3u
 
     - name: Commit & push to target repository
       run: |
