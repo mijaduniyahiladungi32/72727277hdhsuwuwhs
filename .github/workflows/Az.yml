@@ -19,7 +19,7 @@ jobs:
     - name: Unzip protected Python script
       env:
         ZIP_PASS: ${{ secrets.ZIP_FILEAZ }}
-      run: unzip -P "$ZIP_FILEZE5" az.zip
+      run: unzip -P "$ZIP_FILEAZ" az.zip
 
     - name: Run Python script
       run: python az.py
