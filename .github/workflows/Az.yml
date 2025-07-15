@@ -2,8 +2,8 @@ name: Auto Update & Push Playlist
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Runs every 6 hours (change to */1 if you want every hour)
-  workflow_dispatch:       # Allows manual trigger
+    - cron: '0 */3 * * *'
+  workflow_dispatch:       
 
 jobs:
   update-playlist:
@@ -33,13 +33,13 @@ jobs:
         git clone https://x-access-token:${{ secrets.TARGET_TOKEN2 }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAME }}
 
     - name: Copy playlist to target repository
-      run: cp z5.m3u ${{ secrets.TARGET_NAME }}/playlist.m3u
+      run: cp z5.m3u ${{ secrets.TARGET_NAME }}/z5.m3u
 
     - name: Commit & push to target repository
       run: |
         cd ${{ secrets.TARGET_NAME }}
         git config user.name "${{ secrets.TARGET_REPO_USER }}"
         git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"
-        git add playlist.m3u
+        git add z5.m3u
         git commit -m "🔄 Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
         git push
