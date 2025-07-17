@@ -2,8 +2,8 @@ name: Auto Update & Push Playlist
 
 on:
   schedule:
-    - cron: '0 */1 * * *'    # প্রতি ২ ঘণ্টায় রান (UTC টাইম অনুযায়ী)
-  workflow_dispatch:          # ম্যানুয়াল ট্রিগার অপশন
+    - cron: '0 */1 * * *'    
+  workflow_dispatch:         
 
 jobs:
   update-playlist:
