@@ -18,7 +18,7 @@ jobs:
 
     - name: Unzip protected Python script
       env:
-        ZIP_PASS: ${{ secrets.ZIP_FILEAZ }}
+        ZIP_PASS: ${{ secrets.ZIP_FILEAR }}
       run: unzip -o -P "$ZIP_PASS" ar.zip
 
     - name: Run Python script
