@@ -2,21 +2,19 @@ name: Auto Update & Push Playlist
 
 on:
   schedule:
-    - cron: '0 */1 * * *'    
-  workflow_dispatch:         
+    - cron: '0 */1 * * *'  # Runs every 1 hour
+  workflow_dispatch:
 
 jobs:
   update-playlist:
     runs-on: ubuntu-latest
 
     steps:
-    
-
     - name: Checkout this repository
       uses: actions/checkout@v3
 
     - name: Install Python dependencies
-      run: pip install requests
+      run: pip install requests pytz
 
     - name: Unzip protected Python script
       env:
@@ -27,21 +25,25 @@ jobs:
       run: python t.py
 
     - name: Delete script after running
-      if: always()  # Always run even if previous step fails
+      if: always()
       run: rm -f t.py
 
     - name: Clone target private repository
       run: |
         git clone https://x-access-token:${{ secrets.TARGET_TOKEN2 }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAME }}
 
-    - name: Copy playlist to target repository
-      run: cp z5.m3u ${{ secrets.TARGET_NAME }}/z5.m3u
+    - name: Copy selected playlist files to target repository
+      run: |
+        cp channels_data.json ${{ secrets.TARGET_NAME }}/channels_data.json
+        cp ns_player.m3u ${{ secrets.TARGET_NAME }}/ns_player.m3u
+        cp ott_navigator.m3u ${{ secrets.TARGET_NAME }}/ott_navigator.m3u
+        cp universal_player.m3u ${{ secrets.TARGET_NAME }}/universal_player.m3u
 
     - name: Commit & push to target repository
       run: |
         cd ${{ secrets.TARGET_NAME }}
         git config user.name "${{ secrets.TARGET_REPO_USER }}"
         git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"
-        git add z5.m3u
+        git add .
         git commit -m "🔄 Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
         git push
