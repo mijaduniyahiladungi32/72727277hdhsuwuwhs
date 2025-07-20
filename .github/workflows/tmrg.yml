@@ -2,7 +2,7 @@ name: Auto Update & Push Playlist
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  #
+    - cron: '*/26 * * * *'  #
   workflow_dispatch:
 
 jobs:
