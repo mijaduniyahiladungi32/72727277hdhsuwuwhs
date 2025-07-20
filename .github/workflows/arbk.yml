@@ -11,7 +11,7 @@ jobs:
 
     steps:
     - name: Initial 1 minute delay before starting
-      run: sleep 20
+      run: sleep 18 
 
     - name: Checkout this repository
       uses: actions/checkout@v3
