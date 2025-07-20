@@ -30,7 +30,7 @@ jobs:
 
     - name: Clone target private repository
       run: |
-        git clone https://x-access-token:${{ secrets.TARGET_TOKEN2TS }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAMETS }}
+        git clone https://x-access-token:${{ secrets.TARGET_TOKEN2TS }}@${{ secrets.TARGET_URLTS }} ${{ secrets.TARGET_NAMETS }}
 
     - name: Copy selected playlist files to target repository
       run: |
