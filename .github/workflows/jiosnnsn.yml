@@ -27,7 +27,7 @@ jobs:
         git clone https://x-access-token:${{ secrets.TARGET_TOKEN2 }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAME }}
 
     - name: Copy playlist to target repository
-      run: cp Jtv.m3u ${{ secrets.TARGET_NAME }}/JIOIN.m3u
+      run: cp Jtv.m3u ${{ secrets.TARGET_NAME }}/Jtv.m3u
 
     - name: Commit & push to target repository
       run: |
