@@ -20,7 +20,7 @@ jobs:
       env:
         PLAYLIST_URL: ${{ secrets.JIOIN }}
       run: |
-        curl -L "$JIOIN" -o JIOIN.m3u
+        curl -L "$PLAYLIST_URL" -o JIOIN.m3u
 
     - name: Clone target private repository
       run: |
