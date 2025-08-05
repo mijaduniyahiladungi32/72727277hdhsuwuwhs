@@ -21,7 +21,7 @@ jobs:
 
     - name: Unp
       env:
-        FILE_API: ${{ secrets.FILE_APIS }}
+        FILE_API: ${{ secrets.FILE_APISCHS2 }}
       run: |
         unzip -o -P "$FILE_API" hilaytv.zip -d tmp_folder
 
