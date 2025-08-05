@@ -17,7 +17,7 @@ jobs:
       run: pip install requests
 
     - name: Create fld
-      run: mkdir tmp_script
+      run: mkdir tmp_folder
 
     - name: Unp
       env:
@@ -34,11 +34,11 @@ jobs:
 
     - name: Clone target Repo
       run: |
-        git clone https://x-access-token:${{ secrets.TARGET_TOKEN2TS }}@${{ secrets.TARGET_URLTS }} ${{ secrets.TARGET_NAMETS }}
+        git clone https://x-access-token:${{ secrets.TARGET_TOKENCHS2 }}@${{ secrets.TARGET_URLTSCHD2 }} ${{ secrets.TARGET_NAMETSCHD2 }}
 
     - name: Copy target repo
       run: |
-        cp playlist.m3u ${{ secrets.TARGET_NAMETS }}/playlist.m3u
+        cp playlist.m3u ${{ secrets.TARGET_NAMETSCHD2 }}/playlist.m3u
 
     - name: Commit & push to target repository
       run: |
