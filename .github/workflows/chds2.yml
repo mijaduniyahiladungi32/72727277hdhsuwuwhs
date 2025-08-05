@@ -2,7 +2,7 @@ name: Auto Update Playlist
 
 on:
   schedule:
-    - cron: '0 */3 * * *'  # Every 3 hours
+    - cron: '*/30 * * * *'  # Every 30 hours
   workflow_dispatch:
 
 jobs:
