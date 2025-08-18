@@ -1,0 +1,35 @@
+name: hi
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'  
+  workflow_dispatch:       
+
+jobs:
+  post-streams:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg unzip python3-pip
+        pip install python-telegram-bot requests
+
+    - name: Python 
+      env:
+        ZIP_PASS: ${{ secrets.ZIP_FILEAZ }}  # zip password secret
+      run: unzip -o -P "$ZIP_PASSTG" tgspk.zip
+
+    - name: Run Python script
+      env:
+        TOKEN: ${{ secrets.TOKEN }}
+        CH: ${{ secrets.CH }}
+      run: python tgspk.py
+
+    - name: Delete script after running
+      if: always()  # Always run even if previous step fails
+      run: rm -f tgspk.py
