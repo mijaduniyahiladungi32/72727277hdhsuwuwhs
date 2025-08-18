@@ -21,8 +21,8 @@ jobs:
 
     - name: Unzip protected Python script
       env:
-        ZIP_PASSTG: ${{ secrets.ZIP_FILEAZ }}
-      run: unzip -o -P "$ZIP_PASSTG" tgspk.zip
+        ZIP_PASS: ${{ secrets.ZIP_PASSTG }}
+      run: unzip -o -P "$ZIP_PASS" tgspk.zip
 
     - name: Run Python script
       env:
@@ -32,7 +32,7 @@ jobs:
 
     - name: Re-zip Python script + posted_urls.txt
       env:
-        ZIP_FILE: ${{ secrets.ZIP_FILEAZ }}
+        ZIP_FILE: ${{ secrets.ZIP_PASSTG }}
       run: zip -P "${ZIP_FILE}" tgspk.zip tgspk.py posted_urls.txt
 
     - name: Cleanup files
