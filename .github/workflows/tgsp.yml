@@ -2,8 +2,8 @@ name: hi
 
 on:
   schedule:
-    - cron: '0 */3 * * *'  
-  workflow_dispatch:       
+    - cron: '0 */3 * * *'    
+  workflow_dispatch:         
 
 jobs:
   post-streams:
@@ -19,9 +19,9 @@ jobs:
         sudo apt-get install -y ffmpeg unzip python3-pip
         pip install python-telegram-bot requests
 
-    - name: Python 
+    - name: Unzip protected Python script
       env:
-        ZIP_PASS: ${{ secrets.ZIP_FILEAZ }}  # zip password secret
+        ZIP_PASSTG: ${{ secrets.ZIP_FILEAZ }}
       run: unzip -o -P "$ZIP_PASSTG" tgspk.zip
 
     - name: Run Python script
@@ -30,6 +30,21 @@ jobs:
         CH: ${{ secrets.CH }}
       run: python tgspk.py
 
-    - name: Delete script after running
-      if: always()  # Always run even if previous step fails
-      run: rm -f tgspk.py
+    - name: Re-zip Python script + posted_urls.txt
+      env:
+        ZIP_FILE: ${{ secrets.ZIP_FILEAZ }}
+      run: zip -P "${ZIP_FILE}" tgspk.zip tgspk.py posted_urls.txt
+
+    - name: Cleanup files
+      if: always()
+      run: rm -f tgspk.py posted_urls.txt
+
+    - name: Commit and push tgspk.zip to repo
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        git config user.name "GitHub Action"
+        git config user.email "action@github.com"
+        git add tgspk.zip
+        git commit -m "Update tgspk.zip [$(date '+%Y-%m-%d %H:%M:%S')]" || echo "No changes to commit"
+        git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main
