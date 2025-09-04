@@ -2,7 +2,7 @@ name: Auto Update & Push Playlist
 
 on:
   schedule:
-    - cron: '0 */4 * * *'  # Runs every 6 hours
+    - cron: '0 */24 * * *'  # Runs every 6 hours
   workflow_dispatch:       # Allows manual trigger
 
 jobs:
@@ -18,28 +18,28 @@ jobs:
 
     - name: Unzip protected Python script
       env:
-        ZIP_PASS: ${{ secrets.ZI_FILE2 }}
-      run: unzip -P "$ZIP_PASS" run.zip
+        ZIP_PASS: ${{ secrets.FILE_APIAGTN }}
+      run: unzip -P "$ZIP_PASS" angt.zip
 
     - name: Run Python script
-      run: python run.py
+      run: python angt.zip
 
     - name: Delete script after running
-      if: always()  # Always run this step even if previous step fails
-      run: rm -f run.py
+      if: always()
+      run: rm -f angt.py
 
     - name: Clone target private repository
       run: |
         git clone https://x-access-token:${{ secrets.TARGET_TOKEN2 }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAME }}
 
     - name: Copy playlist to target repository
-      run: cp playlist.m3u ${{ secrets.TARGET_NAME }}/
+      run: cp *.m3u ${{ secrets.TARGET_NAME }}/
 
     - name: Commit & push to target repository
       run: |
         cd ${{ secrets.TARGET_NAME }}
         git config user.name "${{ secrets.TARGET_REPO_USER }}"
         git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"
-        git add playlist.m3u
+        git add *.m3u
         git commit -m "🔄 Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
         git push
