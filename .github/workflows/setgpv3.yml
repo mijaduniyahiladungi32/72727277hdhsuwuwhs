@@ -1,0 +1,59 @@
+name: hi
+
+on:
+  schedule:
+    - cron: '*/32 * * * *'
+  workflow_dispatch:         
+
+jobs:
+  post-streams:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11  # choose your Python version
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+    - name: Unzip protected Python script
+      env:
+        ZIP_PASS: ${{ secrets.ZIP_PASSTG }}
+      run: unzip -o -P "$ZIP_PASS" setgpv3.zip
+
+    - name: Run Python script
+      env:
+        TOKEN: ${{ secrets.TOKEN }}
+        CH: ${{ secrets.CH }}
+      run: python setgpv3.py
+
+    - name: Re-zip Python script + posted_urls.txt
+      env:
+        ZIP_FILE: ${{ secrets.ZIP_PASSTG }}
+      run: zip -P "${ZIP_FILE}" setgpv3.zip setgpv3.py posted.json
+
+    - name: Cleanup files
+      if: always()
+      run: rm -f setgpv3.py posted.json
+
+    - name: Commit and push tgspk.zip to repo
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        git config user.name "GitHub Action"
+        git config user.email "action@github.com"
+
+        git add setgpv3.zip
+        git commit -m "Update tgspk.zip [$(date '+%Y-%m-%d %H:%M:%S')]" || echo "No changes to commit"
+
+        # ✅ Force push so no pull/rebase errors
+        git push --force https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main
