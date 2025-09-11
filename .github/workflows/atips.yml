@@ -1,0 +1,64 @@
+name: hi
+
+on:
+  schedule:
+    - cron: '*/32 * * * *'
+  workflow_dispatch:
+
+jobs:
+  post-streams:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repo
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      # Step 4: Unzip protected Python script
+      - name: Unzip protected Python script
+        env:
+          ZIP_PASS: ${{ secrets.ZIP_PASSTG }}
+        run: unzip -o -P "$ZIP_PASS" psati.zip
+
+      # Step 5: Run Python script
+      - name: Run Python script
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+          CH: ${{ secrets.CH }}
+        run: python psati.py
+
+      # Step 6: Re-zip Python script + posted.json
+      - name: Re-zip Python script + posted.json
+        env:
+          ZIP_PASS: ${{ secrets.ZIP_PASSTG }}
+        run: zip -P "$ZIP_PASS" psati.zip psati.py
+
+      # Step 7: Cleanup files
+      - name: Cleanup files
+        if: always()
+        run: rm -f psati.py
+
+      # Step 8: Commit and push zip back to repo
+      - name: Commit and push psati.zip to repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+
+          git add setgpv3.zip
+          git commit -m "Update setgpv3.zip [$(date '+%Y-%m-%d %H:%M:%S')]" || echo "No changes to commit"
+
+          git push --force https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main
