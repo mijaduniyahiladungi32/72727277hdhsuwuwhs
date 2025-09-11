@@ -2,7 +2,7 @@ name: hi
 
 on:
   schedule:
-    - cron: '*/32 * * * *'
+    - cron: '*/59 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
         env:
           TOKEN: ${{ secrets.TOKEN }}
           CH: ${{ secrets.CH }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.API_AP }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python psati.py
