@@ -2,7 +2,7 @@ name: hi
 
 on:
   schedule:
-    - cron: '*/9 * * * *'  # প্রতি 9 মিনিটে রান
+    - cron: '*/9 * * * *'  # f
   workflow_dispatch:
 
 jobs:
@@ -14,11 +14,11 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      # Step 2: Set up Python 3.12
+      # Step 2: Set up Python 3.11
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
+          python-version: '3.11'
 
       # Step 3: Install dependencies
       - name: Install dependencies
