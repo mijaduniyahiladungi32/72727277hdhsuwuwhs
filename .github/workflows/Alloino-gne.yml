@@ -1,79 +1,103 @@
-name: Merge M3U Playlists
+name: Merge M3U Playlists    
 
-on:
-  schedule:
-    - cron: "*/15 * * * *"
-  workflow_dispatch:
+on:    
+  schedule:    
+    - cron: "*/15 * * * *"    
+  workflow_dispatch:    
 
-jobs:
-  merge:
-    runs-on: ubuntu-latest
+jobs:    
+  merge:    
+    runs-on: ubuntu-latest    
 
-    steps:
-      - name: Checkout source repository
-        uses: actions/checkout@v3
+    steps:    
+      - name: Checkout source repository    
+        uses: actions/checkout@v3    
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
+      - name: Set up Python    
+        uses: actions/setup-python@v4    
+        with:    
+          python-version: '3.x'    
 
-      - name: Install dependencies
-        run: pip install requests
+      - name: Install dependencies    
+        run: pip install requests    
 
-      - name: Download External Repos
-        run: |
-          echo "Cloning source repositories..."
-          git clone --depth=1 https://${{ secrets.SOURCE_URL1 }} temp1
-          git clone --depth=1 https://${{ secrets.SOURCE_URL2 }} temp2
-          mkdir -p merged
-          cp -r temp1/*.m3u merged/ || true
-          cp -r temp1/*.m3u8 merged/ || true
-          cp -r temp2/*.m3u merged/ || true
-          cp -r temp2/*.m3u8 merged/ || true
-          cp -r ./*.m3u merged/ || true
-          cp -r ./*.m3u8 merged/ || true
+      - name: Download External Repos    
+        run: |    
+          echo "Cloning source repositories..."    
+          git clone --depth=1 https://${{ secrets.SOURCE_URL1 }} temp1    
+          git clone --depth=1 https://${{ secrets.SOURCE_URL2 }} temp2    
+          mkdir -p merged    
+          cp -r temp1/*.m3u merged/ || true    
+          cp -r temp1/*.m3u8 merged/ || true    
+          cp -r temp2/*.m3u merged/ || true    
+          cp -r temp2/*.m3u8 merged/ || true    
+          cp -r ./*.m3u merged/ || true    
+          cp -r ./*.m3u8 merged/ || true    
 
-      - name: Merge Playlists
-        run: |
-          echo "#EXTM3U" > All-playlist.m3u
-          for f in merged/*.m3u merged/*.m3u8; do
-            [ -f "$f" ] || continue
-            fname=$(basename "$f")
-            # Skip if file is combined-playlist.m3u
-            if [ "$fname" = "combined-playlist.m3u" ]; then
-              echo "Skipping $fname"
-              continue
-            fi
-            fname_noext="${fname%.*}"
-            awk -v fname="$fname_noext" '
-              /^#EXTINF/ {
-                if (match($0, /group-title="[^"]*"/)) {
-                  oldgroup = substr($0, RSTART+13, RLENGTH-14)
-                  sub(/group-title="[^"]*"/, "group-title=\"" fname " | " oldgroup "\"")
-                  print
-                } else {
-                  sub(/^#EXTINF:/, "#EXTINF: group-title=\"" fname "\" ,")
-                  print
-                }
-                next
-              }
-              { print }
-            ' "$f" >> All-playlist.m3u
-          done
+          # Download new external playlist
+          echo "Downloading external playlist (playlist New)..."    
+          curl -L "${{ secrets.External_source }}" -o merged/New-Best.m3u
 
-      - name: Clone target private repository
-        run: |
-          git clone https://x-access-token:${{ secrets.TARGET_TOKEN2 }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAME }}
+      - name: Merge Playlists    
+        run: |    
+          echo "#EXTM3U" > All-playlist.m3u    
+          for f in merged/*.m3u merged/*.m3u8; do    
+            [ -f "$f" ] || continue    
+            fname=$(basename "$f")    
+            # Skip if file is combined-playlist.m3u    
+            if [ "$fname" = "combined-playlist.m3u" ]; then    
+              echo "Skipping $fname"    
+              continue    
+            fi    
+            fname_noext="${fname%.*}"    
 
-      - name: Copy playlist to target repository
-        run: cp All-playlist.m3u ${{ secrets.TARGET_NAME }}/All-playlist.m3u
+            # Special case: if the file is Pl, force group-title="New Best"
+            if [ "$fname" = "New-Best.m3u" ]; then    
+              awk '    
+                /^#EXTINF/ {    
+                  if (match($0, /group-title="[^"]*"/)) {    
+                    sub(/group-title="[^"]*"/, "group-title=\"playlist New\"")    
+                    print    
+                  } else {    
+                    sub(/^#EXTINF:/, "#EXTINF: group-title=\"playlist New\" ,")    
+                    print    
+                  }    
+                  next    
+                }    
+                { print }    
+              ' "$f" >> All-playlist.m3u    
+              continue    
+            fi    
 
-      - name: Commit & push to target repository
-        run: |
-          cd ${{ secrets.TARGET_NAME }}
-          git config user.name "${{ secrets.TARGET_REPO_USER }}"
-          git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"
-          git add All-playlist.m3u
-          git commit -m "🔄 Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+            # Default handling for others
+            awk -v fname="$fname_noext" '    
+              /^#EXTINF/ {    
+                if (match($0, /group-title="[^"]*"/)) {    
+                  oldgroup = substr($0, RSTART+13, RLENGTH-14)    
+                  sub(/group-title="[^"]*"/, "group-title=\"" fname " | " oldgroup "\"")    
+                  print    
+                } else {    
+                  sub(/^#EXTINF:/, "#EXTINF: group-title=\"" fname "\" ,")    
+                  print    
+                }    
+                next    
+              }    
+              { print }    
+            ' "$f" >> All-playlist.m3u    
+          done    
+
+      - name: Clone target private repository    
+        run: |    
+          git clone https://x-access-token:${{ secrets.TARGET_TOKEN2 }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAME }}    
+
+      - name: Copy playlist to target repository    
+        run: cp All-playlist.m3u ${{ secrets.TARGET_NAME }}/All-playlist.m3u    
+
+      - name: Commit & push to target repository    
+        run: |    
+          cd ${{ secrets.TARGET_NAME }}    
+          git config user.name "${{ secrets.TARGET_REPO_USER }}"    
+          git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"    
+          git add All-playlist.m3u    
+          git commit -m "🔄 Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"    
           git push
