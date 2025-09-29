@@ -37,7 +37,7 @@ jobs:
           echo "Downloading external playlist (New-Best)..."
           curl -L "${{ secrets.External_source }}" -o merged/New-Best.m3u
 
-      - name: Download external JSON config
+      - name: Download external JSON config from secret
         run: |
           mkdir -p merged/join
           curl -sL "${{ secrets.PLAYLIST_CONFIG_URL }}" -o config.json
@@ -45,8 +45,7 @@ jobs:
           # Build Skip list
           jq -r '.Skip[].file' config.json > skip.txt
 
-          # Download Join playlists in-memory metadata
-          mkdir -p merged/join
+          # Download Join playlists
           jq -c '.Join[]' config.json | while read item; do
             fname=$(basename $(echo "$item" | jq -r '.Url'))
             curl -sL "$(echo "$item" | jq -r '.Url')" -o "merged/join/$fname"
@@ -88,7 +87,7 @@ jobs:
             ' "$f" >> All-playlist.m3u
           done
 
-          # Merge Join playlists directly
+          # Merge Join playlists
           jq -c '.Join[]' config.json | while read item; do
             fname=$(basename $(echo "$item" | jq -r '.Url'))
             change=$(echo "$item" | jq -r '."group name change"')
