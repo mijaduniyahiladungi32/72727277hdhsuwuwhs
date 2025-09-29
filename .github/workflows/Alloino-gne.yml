@@ -40,7 +40,9 @@ jobs:
           for f in merged/*.m3u merged/*.m3u8; do
             [ -f "$f" ] || continue
             fname=$(basename "$f")
-            esc_fname=$(echo "$fname" | sed 's/[\/&]/\\&/g')
+            # Remove extension
+            fname_noext="${fname%.*}"
+            esc_fname=$(echo "$fname_noext" | sed 's/[\/&]/\\&/g')
             while IFS= read -r line; do
               if [[ "$line" == \#EXTINF* ]]; then
                 if [[ "$line" =~ group-title=\"([^\"]+)\" ]]; then
