@@ -36,7 +36,7 @@ jobs:
 
           # Download new external playlist
           echo "Downloading external playlist (playlist New)..."    
-          curl -L "${{ secrets.External_source }}" -o merged/New-Best.m3u
+          curl -L "${{ secrets.External_source }}" -o merged/New-Best.m3u    
 
       - name: Merge Playlists    
         run: |    
@@ -44,6 +44,7 @@ jobs:
           for f in merged/*.m3u merged/*.m3u8; do    
             [ -f "$f" ] || continue    
             fname=$(basename "$f")    
+
             # Skip if file is combined-playlist.m3u    
             if [ "$fname" = "combined-playlist.m3u" ]; then    
               echo "Skipping $fname"    
@@ -51,25 +52,14 @@ jobs:
             fi    
             fname_noext="${fname%.*}"    
 
-            # Special case: if the file is Pl, force group-title="New Best"
+            # Special case: keep New-Best.m3u exactly as-is (no group-title changes)    
             if [ "$fname" = "New-Best.m3u" ]; then    
-              awk '    
-                /^#EXTINF/ {    
-                  if (match($0, /group-title="[^"]*"/)) {    
-                    sub(/group-title="[^"]*"/, "group-title=\"playlist New\"")    
-                    print    
-                  } else {    
-                    sub(/^#EXTINF:/, "#EXTINF: group-title=\"playlist New\" ,")    
-                    print    
-                  }    
-                  next    
-                }    
-                { print }    
-              ' "$f" >> All-playlist.m3u    
+              # Remove its own #EXTM3U to avoid duplicate headers    
+              awk 'NR>1 {print}' "$f" >> All-playlist.m3u    
               continue    
             fi    
 
-            # Default handling for others
+            # Default handling for others    
             awk -v fname="$fname_noext" '    
               /^#EXTINF/ {    
                 if (match($0, /group-title="[^"]*"/)) {    
