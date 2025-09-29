@@ -34,32 +34,76 @@ jobs:
           cp -r ./*.m3u merged/ || true    
           cp -r ./*.m3u8 merged/ || true    
 
-          # Download new external playlist
-          echo "Downloading external playlist (playlist New)..."    
-          curl -L "${{ secrets.External_source }}" -o merged/New-Best.m3u    
+      - name: Load JSON Config from Secret    
+        run: |    
+          echo "${{ secrets.PLAYLIST_CONFIG_JSON }}" > config.json    
+
+          mkdir -p merged    
+
+          python3 <<'PYCODE'    
+import json, os, subprocess    
+
+with open("config.json") as f:    
+    cfg = json.load(f)    
+
+# Process "Join" section
+for entry in cfg.get("Join", []):    
+    name = entry.get("Name", "Custom")    
+    url = entry.get("Url")    
+    change = entry.get("group name change", "yes").lower()    
+
+    if not url:    
+        continue    
+
+    out = f"merged/{name}.m3u"    
+    print(f"Downloading {name} from {url}...")    
+    subprocess.run(["curl", "-sL", url, "-o", out], check=False)    
+
+    # Save metadata for later merge
+    with open(f"{out}.meta", "w") as mf:    
+        mf.write(change)    
+
+# Process "Skip" section
+skip_files = set()    
+for entry in cfg.get("Skip", []):    
+    fname = entry.get("file")    
+    if fname:    
+        skip_files.add(fname)    
+
+with open("skip_list.txt", "w") as f:    
+    f.write("\n".join(skip_files))    
+PYCODE    
 
       - name: Merge Playlists    
         run: |    
           echo "#EXTM3U" > All-playlist.m3u    
+
+          skip_list=$(cat skip_list.txt 2>/dev/null || true)    
+
           for f in merged/*.m3u merged/*.m3u8; do    
             [ -f "$f" ] || continue    
             fname=$(basename "$f")    
 
-            # Skip if file is combined-playlist.m3u    
-            if [ "$fname" = "combined-playlist.m3u" ]; then    
-              echo "Skipping $fname"    
+            # Skip files from JSON config    
+            if echo "$skip_list" | grep -qx "$fname"; then    
+              echo "Skipping $fname (per config)"    
               continue    
             fi    
+
             fname_noext="${fname%.*}"    
 
-            # Special case: keep New-Best.m3u exactly as-is (no group-title changes)    
-            if [ "$fname" = "New-Best.m3u" ]; then    
-              # Remove its own #EXTM3U to avoid duplicate headers    
-              awk 'NR>1 {print}' "$f" >> All-playlist.m3u    
-              continue    
+            # Check if this file has group-title change rule
+            meta_file="$f.meta"    
+            if [ -f "$meta_file" ]; then    
+              rule=$(cat "$meta_file")    
+              if [ "$rule" = "no" ]; then    
+                # Keep original, strip duplicate #EXTM3U    
+                awk 'NR>1 {print}' "$f" >> All-playlist.m3u    
+                continue    
+              fi    
             fi    
 
-            # Default handling for others    
+            # Default handling with group-title    
             awk -v fname="$fname_noext" '    
               /^#EXTINF/ {    
                 if (match($0, /group-title="[^"]*"/)) {    
