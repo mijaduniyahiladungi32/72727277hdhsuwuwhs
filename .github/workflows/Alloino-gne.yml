@@ -40,7 +40,7 @@ jobs:
       - name: Download external JSON config
         run: |
           mkdir -p merged/join
-          curl -sL "https://private-zone-by-xfireflix.pages.dev/samo-config.json" -o config.json
+    			curl -sL "${{ secrets.PLAYLIST_CONFIG_URL }}" -o config.json
 
           # Build Skip list
           jq -r '.Skip[].file' config.json > skip.txt
