@@ -40,6 +40,11 @@ jobs:
           for f in merged/*.m3u merged/*.m3u8; do
             [ -f "$f" ] || continue
             fname=$(basename "$f")
+            # Skip if file is combined-playlist.m3u
+            if [ "$fname" = "combined-playlist.m3u" ]; then
+              echo "Skipping $fname"
+              continue
+            fi
             fname_noext="${fname%.*}"
             awk -v fname="$fname_noext" '
               /^#EXTINF/ {
