@@ -40,13 +40,13 @@ jobs:
 
       - name: Parse JSON config and download Join playlists
         run: |
-          # Remove outer quotes and unescape JSON from secret
-          echo "${{ secrets.PLAYLIST_CONFIG_JSON }}" | sed 's/^"\(.*\)"$/\1/' | sed 's/\\"/"/g' > config.json
-          
-          # Validate JSON
-          jq . config.json
-          
           mkdir -p merged/join
+
+          # Safely parse secret JSON and save to file
+          echo "${{ secrets.PLAYLIST_CONFIG_JSON }}" | jq -r '.' > config.json
+          
+          # Build Skip list
+          jq -r '.Skip[].file' config.json > skip.txt
           
           # Download Join playlists
           jq -c '.Join[]' config.json | while read item; do
@@ -57,13 +57,10 @@ jobs:
             file="merged/join/$(basename "$url")"
             curl -L "$url" -o "$file"
             
-            # Store metadata
+            # Store metadata for merging
             echo "$change" > "$file.change"
             echo "$name" > "$file.name"
           done
-          
-          # Build Skip array
-          jq -r '.Skip[].file' config.json > skip.txt
 
       - name: Merge Playlists          
         run: |          
