@@ -42,24 +42,20 @@ jobs:
             fname=$(basename "$f")
             # Remove extension
             fname_noext="${fname%.*}"
-            # Escape sed special chars
-            esc_fname=$(printf '%s\n' "$fname_noext" | sed 's/[\/&]/\\&/g')
-            while IFS= read -r line; do
-              if [[ "$line" == \#EXTINF* ]]; then
-                if [[ "$line" =~ group-title=\"([^\"]+)\" ]]; then
-                  oldgroup="${BASH_REMATCH[1]}"
-                  esc_oldgroup=$(printf '%s\n' "$oldgroup" | sed 's/[\/&]/\\&/g')
-                  # Use | as delimiter to avoid / conflicts
-                  newline=$(echo "$line" | sed "s|group-title=\"[^\"]*\"|group-title=\"${esc_fname} | ${esc_oldgroup}\"|")
-                  echo "$newline" >> All-playlist.m3u
-                else
-                  newline=$(echo "$line" | sed "s|#EXTINF:|#EXTINF: group-title=\"${esc_fname}\" ,|")
-                  echo "$newline" >> All-playlist.m3u
-                fi
-              else
-                echo "$line" >> All-playlist.m3u
-              fi
-            done < "$f"
+            awk -v fname="$fname_noext" '
+              /^#EXTINF/ {
+                if (match($0, /group-title="[^"]*"/)) {
+                  oldgroup = substr($0, RSTART+13, RLENGTH-14)
+                  sub(/group-title="[^"]*"/, "group-title=\"" fname " | " oldgroup "\"")
+                  print
+                } else {
+                  sub(/^#EXTINF:/, "#EXTINF: group-title=\"" fname "\" ,")
+                  print
+                }
+                next
+              }
+              { print }
+            ' "$f" >> All-playlist.m3u
           done
 
       - name: Clone target private repository
