@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repo
+      - name: Checkout current repository
         uses: actions/checkout@v3
 
       - name: Set up Python
@@ -23,8 +23,9 @@ jobs:
 
       - name: Download External Repos
         run: |
-          git clone --depth=1 https://${{ secrets.SOURCE_TOKEN1 }}@${{ secrets.SOURCE_URL1 }} temp1
-          git clone --depth=1 https://${{ secrets.SOURCE_TOKEN2 }}@${{ secrets.SOURCE_URL2 }} temp2
+          echo "Cloning source repositories..."
+          git clone --depth=1 https://${{ secrets.SOURCE_URL1 }} temp1
+          git clone --depth=1 https://${{ secrets.SOURCE_URL2 }} temp2
           mkdir -p merged
           cp -r temp1/*.m3u merged/ || true
           cp -r temp1/*.m3u8 merged/ || true
@@ -69,4 +70,4 @@ jobs:
           git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"
           git add All-playlist.m3u
           git commit -m "🔄 Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
-          git push
+          git pushit
