@@ -42,12 +42,12 @@ jobs:
         run: |
           mkdir -p merged/join
 
-          # Safely parse secret JSON and save to file
-          echo "${{ secrets.PLAYLIST_CONFIG_JSON }}" | jq -r '.' > config.json
-          
+          # Safely parse secret JSON even if it has escaped quotes
+          echo "${{ secrets.PLAYLIST_CONFIG_JSON }}" | jq --raw-input --slurp 'fromjson' > config.json
+
           # Build Skip list
           jq -r '.Skip[].file' config.json > skip.txt
-          
+
           # Download Join playlists
           jq -c '.Join[]' config.json | while read item; do
             name=$(echo "$item" | jq -r '.Name')
