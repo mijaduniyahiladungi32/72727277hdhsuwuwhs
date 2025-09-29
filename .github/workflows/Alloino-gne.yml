@@ -1,75 +1,89 @@
-name: Merge M3U Playlists
+name: Merge M3U Playlists          
 
-on:
-  schedule:
-    - cron: "*/15 * * * *"
-  workflow_dispatch:
+on:          
+  schedule:          
+    - cron: "*/15 * * * *"          
+  workflow_dispatch:          
 
-jobs:
-  merge:
-    runs-on: ubuntu-latest
+jobs:          
+  merge:          
+    runs-on: ubuntu-latest          
 
-    steps:
-      - name: Checkout source repository
-        uses: actions/checkout@v3
+    steps:          
+      - name: Checkout source repository          
+        uses: actions/checkout@v3          
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
+      - name: Set up Python          
+        uses: actions/setup-python@v4          
+        with:          
+          python-version: '3.x'          
 
-      - name: Install dependencies
-        run: pip install requests jq
+      - name: Install dependencies          
+        run: pip install requests jq          
 
-      - name: Download External Repos
+      - name: Download External Repos          
+        run: |          
+          echo "Cloning source repositories..."          
+          git clone --depth=1 https://${{ secrets.SOURCE_URL1 }} temp1          
+          git clone --depth=1 https://${{ secrets.SOURCE_URL2 }} temp2          
+          mkdir -p merged          
+          cp -r temp1/*.m3u merged/ || true          
+          cp -r temp1/*.m3u8 merged/ || true          
+          cp -r temp2/*.m3u merged/ || true          
+          cp -r temp2/*.m3u8 merged/ || true          
+          cp -r ./*.m3u merged/ || true          
+          cp -r ./*.m3u8 merged/ || true          
+
+          # Download new external playlist      
+          echo "Downloading external playlist (playlist New)..."          
+          curl -L "${{ secrets.External_source }}" -o merged/New-Best.m3u          
+
+      - name: Parse JSON config and download Join playlists
         run: |
-          echo "Cloning source repositories..."
-          git clone --depth=1 https://${{ secrets.SOURCE_URL1 }} temp1
-          git clone --depth=1 https://${{ secrets.SOURCE_URL2 }} temp2
-          mkdir -p merged
-          cp -r temp1/*.m3u merged/ || true
-          cp -r temp1/*.m3u8 merged/ || true
-          cp -r temp2/*.m3u merged/ || true
-          cp -r temp2/*.m3u8 merged/ || true
-          cp -r ./*.m3u merged/ || true
-          cp -r ./*.m3u8 merged/ || true
+          echo '${{ secrets.PLAYLIST_CONFIG_JSON }}' > config.json
+          
+          mkdir -p merged/join
+          
+          # Download each Join playlist
+          jq -c '.Join[]' config.json | while read item; do
+            name=$(echo "$item" | jq -r '.Name')
+            url=$(echo "$item" | jq -r '.Url')
+            change=$(echo "$item" | jq -r '."group name change"')
+            
+            file="merged/join/$(basename "$url")"
+            curl -L "$url" -o "$file"
+            
+            # mark change in a .meta file
+            echo "$change" > "$file.change"
+            echo "$name" > "$file.name"
+          done
+          
+          # Build Skip array
+          jq -r '.Skip[].file' config.json > skip.txt
 
-          # Download new external playlist
-          echo "Downloading external playlist (playlist New)..."
-          curl -L "${{ secrets.External_source }}" -o merged/New-Best.m3u
-
-      - name: Parse JSON config
-        run: |
-          echo "${{ secrets.PLAYLIST_CONFIG_JSON }}" > config.json
-          # Generate skip list
-          SKIP_FILES=$(jq -r '.Skip[].file' config.json | tr '\n' ' ')
-          echo "Skip files: $SKIP_FILES"
-          # Generate join list as name|url|group-change
-          JOIN_LIST=$(jq -r '.Join[] | "\(.Name)|\(.Url)|\(.["group name change"])"' config.json)
-          echo "$JOIN_LIST" > join_list.txt
-
-      - name: Merge Playlists
-        run: |
+      - name: Merge Playlists          
+        run: |          
           echo "#EXTM3U" > All-playlist.m3u
-
-          # Append existing merged files
+          
+          # Merge normal files first
           for f in merged/*.m3u merged/*.m3u8; do
             [ -f "$f" ] || continue
             fname=$(basename "$f")
-            fname_noext="${fname%.*}"
-
-            # Skip files in JSON skip list
-            if echo "$SKIP_FILES" | grep -qw "$fname"; then
+            
+            # Skip if in Skip list
+            if grep -qx "$fname" skip.txt; then
               echo "Skipping $fname"
               continue
             fi
-
-            # Keep New-Best.m3u as-is
+            
+            # New-Best.m3u: append as-is
             if [ "$fname" = "New-Best.m3u" ]; then
               awk 'NR>1 {print}' "$f" >> All-playlist.m3u
               continue
             fi
-
+            
+            fname_noext="${fname%.*}"
+            
             # Default handling
             awk -v fname="$fname_noext" '
               /^#EXTINF/ {
@@ -86,15 +100,16 @@ jobs:
               { print }
             ' "$f" >> All-playlist.m3u
           done
-
-          # Append external join playlists
-          while IFS="|" read -r name url group_change; do
-            tmpfile=$(mktemp)
-            echo "Downloading $name from $url"
-            curl -sL "$url" -o "$tmpfile"
-
-            if [ "$group_change" = "yes" ]; then
-              awk -v fname="$name" '
+          
+          # Merge Join playlists
+          for f in merged/join/*; do
+            [ -f "$f" ] || continue
+            fname=$(basename "$f")
+            change=$(cat "$f.change")
+            joinname=$(cat "$f.name")
+            
+            if [ "$change" = "yes" ]; then
+              awk -v fname="$joinname" '
                 /^#EXTINF/ {
                   if (match($0, /group-title="[^"]*"/)) {
                     oldgroup = substr($0, RSTART+13, RLENGTH-14)
@@ -107,26 +122,25 @@ jobs:
                   next
                 }
                 { print }
-              ' "$tmpfile" >> All-playlist.m3u
+              ' "$f" >> All-playlist.m3u
             else
-              awk 'NR>1 {print}' "$tmpfile" >> All-playlist.m3u
+              # append as-is
+              awk 'NR>1 {print}' "$f" >> All-playlist.m3u
             fi
+          done
 
-            rm "$tmpfile"
-          done < join_list.txt
+      - name: Clone target private repository          
+        run: |          
+          git clone https://x-access-token:${{ secrets.TARGET_TOKEN2 }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAME }}          
 
-      - name: Clone target private repository
-        run: |
-          git clone https://x-access-token:${{ secrets.TARGET_TOKEN2 }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAME }}
+      - name: Copy playlist to target repository          
+        run: cp All-playlist.m3u ${{ secrets.TARGET_NAME }}/All-playlist.m3u          
 
-      - name: Copy playlist to target repository
-        run: cp All-playlist.m3u ${{ secrets.TARGET_NAME }}/All-playlist.m3u
-
-      - name: Commit & push to target repository
-        run: |
-          cd ${{ secrets.TARGET_NAME }}
-          git config user.name "${{ secrets.TARGET_REPO_USER }}"
-          git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"
-          git add All-playlist.m3u
-          git commit -m "🔄 Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+      - name: Commit & push to target repository          
+        run: |          
+          cd ${{ secrets.TARGET_NAME }}          
+          git config user.name "${{ secrets.TARGET_REPO_USER }}"          
+          git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"          
+          git add All-playlist.m3u          
+          git commit -m "🔄 Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"          
           git push
