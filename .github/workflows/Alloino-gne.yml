@@ -38,12 +38,10 @@ jobs:
           echo "Downloading external playlist (playlist New)..."          
           curl -L "${{ secrets.External_source }}" -o merged/New-Best.m3u          
 
-      - name: Parse JSON config and download Join playlists
+      - name: Download external JSON config
         run: |
           mkdir -p merged/join
-
-          # Safely parse secret JSON even if it has escaped quotes
-          echo "${{ secrets.PLAYLIST_CONFIG_JSON }}" | jq --raw-input --slurp 'fromjson' > config.json
+          curl -sL "https://private-zone-by-xfireflix.pages.dev/samo-config.json" -o config.json
 
           # Build Skip list
           jq -r '.Skip[].file' config.json > skip.txt
