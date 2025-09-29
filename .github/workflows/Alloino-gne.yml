@@ -36,7 +36,7 @@ jobs:
 
       - name: Merge Playlists
         run: |
-          echo "#EXTM3U" > playlist.m3u
+          echo "#EXTM3U" > All-playlist.m3u
           for f in merged/*.m3u merged/*.m3u8; do
             [ -f "$f" ] || continue
             fname=$(basename "$f")
@@ -54,7 +54,7 @@ jobs:
                 next
               }
               { print }
-            ' "$f" >> playlist.m3u
+            ' "$f" >> All-playlist.m3u
           done
 
       - name: Clone target private repository
@@ -62,13 +62,13 @@ jobs:
           git clone https://x-access-token:${{ secrets.TARGET_TOKEN2 }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAME }}
 
       - name: Copy playlist to target repository
-        run: cp playlist.m3u ${{ secrets.TARGET_NAME }}/playlist.m3u
+        run: cp All-playlist.m3u ${{ secrets.TARGET_NAME }}/All-playlist.m3u
 
       - name: Commit & push to target repository
         run: |
           cd ${{ secrets.TARGET_NAME }}
           git config user.name "${{ secrets.TARGET_REPO_USER }}"
           git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"
-          git add playlist.m3u
+          git add All-playlist.m3u
           git commit -m "🔄 Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
           git push
