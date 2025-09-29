@@ -1,137 +1,141 @@
-name: Merge M3U Playlists    
+name: Merge M3U Playlists
 
-on:    
-  schedule:    
-    - cron: "*/15 * * * *"    
-  workflow_dispatch:    
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
 
-jobs:    
-  merge:    
-    runs-on: ubuntu-latest    
+jobs:
+  merge:
+    runs-on: ubuntu-latest
 
-    steps:    
-      - name: Checkout source repository    
-        uses: actions/checkout@v3    
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v3
 
-      - name: Set up Python    
-        uses: actions/setup-python@v4    
-        with:    
-          python-version: '3.x'    
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
-      - name: Install dependencies    
-        run: pip install requests    
+      - name: Install dependencies
+        run: pip install requests jq
 
-      - name: Download External Repos    
-        run: |    
-          echo "Cloning source repositories..."    
-          git clone --depth=1 https://${{ secrets.SOURCE_URL1 }} temp1    
-          git clone --depth=1 https://${{ secrets.SOURCE_URL2 }} temp2    
-          mkdir -p merged    
-          cp -r temp1/*.m3u merged/ || true    
-          cp -r temp1/*.m3u8 merged/ || true    
-          cp -r temp2/*.m3u merged/ || true    
-          cp -r temp2/*.m3u8 merged/ || true    
-          cp -r ./*.m3u merged/ || true    
-          cp -r ./*.m3u8 merged/ || true    
+      - name: Download External Repos
+        run: |
+          echo "Cloning source repositories..."
+          git clone --depth=1 https://${{ secrets.SOURCE_URL1 }} temp1
+          git clone --depth=1 https://${{ secrets.SOURCE_URL2 }} temp2
+          mkdir -p merged
+          cp -r temp1/*.m3u merged/ || true
+          cp -r temp1/*.m3u8 merged/ || true
+          cp -r temp2/*.m3u merged/ || true
+          cp -r temp2/*.m3u8 merged/ || true
+          cp -r ./*.m3u merged/ || true
+          cp -r ./*.m3u8 merged/ || true
 
-      - name: Load JSON Config from Secret    
-        run: |    
-          echo "${{ secrets.PLAYLIST_CONFIG_JSON }}" > config.json    
+          # Download new external playlist (always included as-is)
+          echo "Downloading external playlist (New-Best)..."
+          curl -L "${{ secrets.External_source }}" -o merged/New-Best.m3u
 
-          mkdir -p merged    
+      - name: Download & Process Config JSON
+        run: |
+          echo "${{ secrets.PLAYLIST_CONFIG_JSON }}" > config.json
+          echo "Config JSON written."
 
-          python3 <<'PYCODE'    
-import json, os, subprocess    
+          mkdir -p merged/joined
 
-with open("config.json") as f:    
-    cfg = json.load(f)    
+          # Handle Join entries
+          jq -c '.Join[]' config.json | while read entry; do
+            NAME=$(echo "$entry" | jq -r '.Name')
+            URL=$(echo "$entry" | jq -r '.Url')
+            CHANGE=$(echo "$entry" | jq -r '.["group name change"]')
+            FILE="merged/joined/${NAME// /_}.m3u"
 
-# Process "Join" section
-for entry in cfg.get("Join", []):    
-    name = entry.get("Name", "Custom")    
-    url = entry.get("Url")    
-    change = entry.get("group name change", "yes").lower()    
+            echo "Downloading join playlist: $NAME from $URL"
+            curl -L "$URL" -o "$FILE"
 
-    if not url:    
-        continue    
+            if [ "$CHANGE" = "yes" ]; then
+              awk -v fname="$NAME" '
+                /^#EXTINF/ {
+                  if (match($0, /group-title="[^"]*"/)) {
+                    oldgroup = substr($0, RSTART+13, RLENGTH-14)
+                    sub(/group-title="[^"]*"/, "group-title=\"" fname " | " oldgroup "\"")
+                    print
+                  } else {
+                    sub(/^#EXTINF:/, "#EXTINF: group-title=\"" fname "\" ,")
+                    print
+                  }
+                  next
+                }
+                { print }
+              ' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+            fi
+          done
 
-    out = f"merged/{name}.m3u"    
-    print(f"Downloading {name} from {url}...")    
-    subprocess.run(["curl", "-sL", url, "-o", out], check=False)    
+      - name: Merge Playlists
+        run: |
+          echo "#EXTM3U" > All-playlist.m3u
 
-    # Save metadata for later merge
-    with open(f"{out}.meta", "w") as mf:    
-        mf.write(change)    
+          # Read skip list into a bash array
+          mapfile -t SKIP_FILES < <(jq -r '.Skip[].file' config.json)
 
-# Process "Skip" section
-skip_files = set()    
-for entry in cfg.get("Skip", []):    
-    fname = entry.get("file")    
-    if fname:    
-        skip_files.add(fname)    
+          should_skip() {
+            local f=$1
+            for s in "${SKIP_FILES[@]}"; do
+              if [ "$s" = "$f" ]; then
+                return 0
+              fi
+            done
+            return 1
+          }
 
-with open("skip_list.txt", "w") as f:    
-    f.write("\n".join(skip_files))    
-PYCODE    
+          for f in merged/*.m3u merged/*.m3u8 merged/joined/*.m3u; do
+            [ -f "$f" ] || continue
+            fname=$(basename "$f")
 
-      - name: Merge Playlists    
-        run: |    
-          echo "#EXTM3U" > All-playlist.m3u    
+            if should_skip "$fname"; then
+              echo "Skipping $fname (from config)"
+              continue
+            fi
 
-          skip_list=$(cat skip_list.txt 2>/dev/null || true)    
+            fname_noext="${fname%.*}"
 
-          for f in merged/*.m3u merged/*.m3u8; do    
-            [ -f "$f" ] || continue    
-            fname=$(basename "$f")    
+            # Special case: keep New-Best.m3u exactly as-is
+            if [ "$fname" = "New-Best.m3u" ]; then
+              awk 'NR>1 {print}' "$f" >> All-playlist.m3u
+              continue
+            fi
 
-            # Skip files from JSON config    
-            if echo "$skip_list" | grep -qx "$fname"; then    
-              echo "Skipping $fname (per config)"    
-              continue    
-            fi    
+            # Default handling
+            awk -v fname="$fname_noext" '
+              /^#EXTINF/ {
+                if (match($0, /group-title="[^"]*"/)) {
+                  oldgroup = substr($0, RSTART+13, RLENGTH-14)
+                  sub(/group-title="[^"]*"/, "group-title=\"" fname " | " oldgroup "\"")
+                  print
+                } else {
+                  sub(/^#EXTINF:/, "#EXTINF: group-title=\"" fname "\" ,")
+                  print
+                }
+                next
+              }
+              { print }
+            ' "$f" >> All-playlist.m3u
+          done
 
-            fname_noext="${fname%.*}"    
+      - name: Clone target private repository
+        run: |
+          git clone https://x-access-token:${{ secrets.TARGET_TOKEN2 }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAME }}
 
-            # Check if this file has group-title change rule
-            meta_file="$f.meta"    
-            if [ -f "$meta_file" ]; then    
-              rule=$(cat "$meta_file")    
-              if [ "$rule" = "no" ]; then    
-                # Keep original, strip duplicate #EXTM3U    
-                awk 'NR>1 {print}' "$f" >> All-playlist.m3u    
-                continue    
-              fi    
-            fi    
+      - name: Copy playlist to target repository
+        run: cp All-playlist.m3u ${{ secrets.TARGET_NAME }}/All-playlist.m3u
 
-            # Default handling with group-title    
-            awk -v fname="$fname_noext" '    
-              /^#EXTINF/ {    
-                if (match($0, /group-title="[^"]*"/)) {    
-                  oldgroup = substr($0, RSTART+13, RLENGTH-14)    
-                  sub(/group-title="[^"]*"/, "group-title=\"" fname " | " oldgroup "\"")    
-                  print    
-                } else {    
-                  sub(/^#EXTINF:/, "#EXTINF: group-title=\"" fname "\" ,")    
-                  print    
-                }    
-                next    
-              }    
-              { print }    
-            ' "$f" >> All-playlist.m3u    
-          done    
-
-      - name: Clone target private repository    
-        run: |    
-          git clone https://x-access-token:${{ secrets.TARGET_TOKEN2 }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAME }}    
-
-      - name: Copy playlist to target repository    
-        run: cp All-playlist.m3u ${{ secrets.TARGET_NAME }}/All-playlist.m3u    
-
-      - name: Commit & push to target repository    
-        run: |    
-          cd ${{ secrets.TARGET_NAME }}    
-          git config user.name "${{ secrets.TARGET_REPO_USER }}"    
-          git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"    
-          git add All-playlist.m3u    
-          git commit -m "🔄 Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"    
+      - name: Commit & push to target repository
+        run: |
+          cd ${{ secrets.TARGET_NAME }}
+          git config user.name "${{ secrets.TARGET_REPO_USER }}"
+          git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"
+          git add All-playlist.m3u
+          git commit -m "🔄 Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
           git push
