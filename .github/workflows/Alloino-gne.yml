@@ -34,74 +34,37 @@ jobs:
           cp -r ./*.m3u merged/ || true
           cp -r ./*.m3u8 merged/ || true
 
-          # Download new external playlist (always included as-is)
-          echo "Downloading external playlist (New-Best)..."
+          # Download new external playlist
+          echo "Downloading external playlist (playlist New)..."
           curl -L "${{ secrets.External_source }}" -o merged/New-Best.m3u
 
-      - name: Download & Process Config JSON
+      - name: Parse JSON config
         run: |
           echo "${{ secrets.PLAYLIST_CONFIG_JSON }}" > config.json
-          echo "Config JSON written."
-
-          mkdir -p merged/joined
-
-          # Handle Join entries
-          jq -c '.Join[]' config.json | while read entry; do
-            NAME=$(echo "$entry" | jq -r '.Name')
-            URL=$(echo "$entry" | jq -r '.Url')
-            CHANGE=$(echo "$entry" | jq -r '.["group name change"]')
-            FILE="merged/joined/${NAME// /_}.m3u"
-
-            echo "Downloading join playlist: $NAME from $URL"
-            curl -L "$URL" -o "$FILE"
-
-            if [ "$CHANGE" = "yes" ]; then
-              awk -v fname="$NAME" '
-                /^#EXTINF/ {
-                  if (match($0, /group-title="[^"]*"/)) {
-                    oldgroup = substr($0, RSTART+13, RLENGTH-14)
-                    sub(/group-title="[^"]*"/, "group-title=\"" fname " | " oldgroup "\"")
-                    print
-                  } else {
-                    sub(/^#EXTINF:/, "#EXTINF: group-title=\"" fname "\" ,")
-                    print
-                  }
-                  next
-                }
-                { print }
-              ' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-            fi
-          done
+          # Generate skip list
+          SKIP_FILES=$(jq -r '.Skip[].file' config.json | tr '\n' ' ')
+          echo "Skip files: $SKIP_FILES"
+          # Generate join list as name|url|group-change
+          JOIN_LIST=$(jq -r '.Join[] | "\(.Name)|\(.Url)|\(.["group name change"])"' config.json)
+          echo "$JOIN_LIST" > join_list.txt
 
       - name: Merge Playlists
         run: |
           echo "#EXTM3U" > All-playlist.m3u
 
-          # Read skip list into a bash array
-          mapfile -t SKIP_FILES < <(jq -r '.Skip[].file' config.json)
-
-          should_skip() {
-            local f=$1
-            for s in "${SKIP_FILES[@]}"; do
-              if [ "$s" = "$f" ]; then
-                return 0
-              fi
-            done
-            return 1
-          }
-
-          for f in merged/*.m3u merged/*.m3u8 merged/joined/*.m3u; do
+          # Append existing merged files
+          for f in merged/*.m3u merged/*.m3u8; do
             [ -f "$f" ] || continue
             fname=$(basename "$f")
+            fname_noext="${fname%.*}"
 
-            if should_skip "$fname"; then
-              echo "Skipping $fname (from config)"
+            # Skip files in JSON skip list
+            if echo "$SKIP_FILES" | grep -qw "$fname"; then
+              echo "Skipping $fname"
               continue
             fi
 
-            fname_noext="${fname%.*}"
-
-            # Special case: keep New-Best.m3u exactly as-is
+            # Keep New-Best.m3u as-is
             if [ "$fname" = "New-Best.m3u" ]; then
               awk 'NR>1 {print}' "$f" >> All-playlist.m3u
               continue
@@ -123,6 +86,34 @@ jobs:
               { print }
             ' "$f" >> All-playlist.m3u
           done
+
+          # Append external join playlists
+          while IFS="|" read -r name url group_change; do
+            tmpfile=$(mktemp)
+            echo "Downloading $name from $url"
+            curl -sL "$url" -o "$tmpfile"
+
+            if [ "$group_change" = "yes" ]; then
+              awk -v fname="$name" '
+                /^#EXTINF/ {
+                  if (match($0, /group-title="[^"]*"/)) {
+                    oldgroup = substr($0, RSTART+13, RLENGTH-14)
+                    sub(/group-title="[^"]*"/, "group-title=\"" fname " | " oldgroup "\"")
+                    print
+                  } else {
+                    sub(/^#EXTINF:/, "#EXTINF: group-title=\"" fname "\" ,")
+                    print
+                  }
+                  next
+                }
+                { print }
+              ' "$tmpfile" >> All-playlist.m3u
+            else
+              awk 'NR>1 {print}' "$tmpfile" >> All-playlist.m3u
+            fi
+
+            rm "$tmpfile"
+          done < join_list.txt
 
       - name: Clone target private repository
         run: |
