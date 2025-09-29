@@ -40,7 +40,11 @@ jobs:
 
       - name: Parse JSON config and download Join playlists
         run: |
-          echo '${{ secrets.PLAYLIST_CONFIG_JSON }}' > config.json
+          # Save JSON from secret to file
+          echo "${{ secrets.PLAYLIST_CONFIG_JSON }}" > config.json
+          
+          # Validate JSON
+          cat config.json | jq .
           
           mkdir -p merged/join
           
@@ -53,7 +57,7 @@ jobs:
             file="merged/join/$(basename "$url")"
             curl -L "$url" -o "$file"
             
-            # mark change in a .meta file
+            # Store metadata
             echo "$change" > "$file.change"
             echo "$name" > "$file.name"
           done
@@ -104,7 +108,6 @@ jobs:
           # Merge Join playlists
           for f in merged/join/*; do
             [ -f "$f" ] || continue
-            fname=$(basename "$f")
             change=$(cat "$f.change")
             joinname=$(cat "$f.name")
             
