@@ -40,14 +40,16 @@ jobs:
           for f in merged/*.m3u merged/*.m3u8; do
             [ -f "$f" ] || continue
             fname=$(basename "$f")
+            esc_fname=$(echo "$fname" | sed 's/[\/&]/\\&/g')
             while IFS= read -r line; do
               if [[ "$line" == \#EXTINF* ]]; then
                 if [[ "$line" =~ group-title=\"([^\"]+)\" ]]; then
                   oldgroup="${BASH_REMATCH[1]}"
-                  newline=$(echo "$line" | sed -E "s/group-title=\"[^\"]+\"/group-title=\"${fname} | ${oldgroup}\"/")
+                  esc_oldgroup=$(echo "$oldgroup" | sed 's/[\/&]/\\&/g')
+                  newline=$(echo "$line" | sed "s|group-title=\"[^\"]*\"|group-title=\"${esc_fname} | ${esc_oldgroup}\"|")
                   echo "$newline" >> All-playlist.m3u
                 else
-                  newline=$(echo "$line" | sed -E "s/#EXTINF:/#EXTINF: group-title=\"${fname}\" ,/")
+                  newline=$(echo "$line" | sed "s|#EXTINF:|#EXTINF: group-title=\"${esc_fname}\" ,|")
                   echo "$newline" >> All-playlist.m3u
                 fi
               else
@@ -70,4 +72,4 @@ jobs:
           git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"
           git add All-playlist.m3u
           git commit -m "🔄 Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
-          git pushit
+          git push
