@@ -1,0 +1,47 @@
+name: Auto Update & Push Playlist
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Runs every 25 minutes
+  workflow_dispatch:
+
+jobs:
+  update-playlist:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout this repository
+      uses: actions/checkout@v3
+
+    - name: Install Python dependencies
+      run: pip install requests pytz pycryptodome
+
+    - name: Unzip protected Python script
+      env:
+        ZIP_PASS: ${{ secrets.ZIP_FILET }}
+      run: unzip -o -P "$ZIP_PASS" an.zip
+
+    - name: Run Python script
+      run: python an.py
+
+    - name: Delete script after running
+      if: always()
+      run: rm -f an.py
+
+    - name: Clone target private repository
+      run: |
+        git clone https://x-access-token:${{ secrets.TARGET_TOKEN2TS }}@${{ secrets.TARGET_URLTS }} ${{ secrets.TARGET_NAMETS }}
+
+    - name: Copy selected playlist files to target repository
+      run: |
+        cp *.json ${{ secrets.TARGET_NAMETS }}/ || true
+        cp *.m3u ${{ secrets.TARGET_NAMETS }}/ || true
+
+    - name: Commit & push to target repository
+      run: |
+        cd ${{ secrets.TARGET_NAMETS }}
+        git config user.name "${{ secrets.TARGET_REPO_USER }}"
+        git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"
+        git add .
+        git commit -m "🔄 Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+        git push
