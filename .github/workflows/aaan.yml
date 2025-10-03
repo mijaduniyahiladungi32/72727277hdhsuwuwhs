@@ -19,7 +19,7 @@ jobs:
     - name: Unzip protected Python script
       env:
         ZIP_PASS: ${{ secrets.ZIP_FILET }}
-      run: unzip -o -P "$ZIP_PASS" anp.zip
+      run: unzip -o -P "$ZIP_PASS" an.zip
 
     - name: Run Python script
       run: python an.py
