@@ -35,9 +35,7 @@ jobs:
     - name: Copy selected playlist files to target repository
       run: |
         cp channels_data.json ${{ secrets.TARGET_NAMETS }}/channels_data.json
-        cp ns_player.m3u ${{ secrets.TARGET_NAMETS }}/ns_player.m3u
-        cp ott_navigator.m3u ${{ secrets.TARGET_NAMETS }}/ott_navigator.m3u
-        cp universal_player.m3u ${{ secrets.TARGET_NAMETS }}/universal_player.m3u
+        cp *.m3u ${{ secrets.TARGET_NAMETS }}/*.m3u
 
     - name: Commit & push to target repository
       run: |
