@@ -1,8 +1,8 @@
-name: Auto Update & Push Playlist
+name: tt
 
 on:
   schedule:
-    - cron: '*/15 * * * *'  # Runs every 25 minutes
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
     - name: Unzip protected Python script
       env:
         ZIP_PASS: ${{ secrets.ZIP_FILET }}
-      run: unzip -o -P "$ZIP_PASS" an.zip
+      run: unzip -o -P "$ZIP_PASS" anp.zip
 
     - name: Run Python script
       run: python an.py
@@ -30,18 +30,17 @@ jobs:
 
     - name: Clone target private repository
       run: |
-        git clone https://x-access-token:${{ secrets.TARGET_TOKEN2TS }}@${{ secrets.TARGET_URLTS }} ${{ secrets.TARGET_NAMETS }}
+        git clone https://x-access-token:${{ secrets.TARGET_TOKEN2 }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAME }}
 
     - name: Copy selected playlist files to target repository
       run: |
-        cp *.json ${{ secrets.TARGET_NAMETS }}/ || true
-        cp *.m3u ${{ secrets.TARGET_NAMETS }}/ || true
+        cp *.m3u ${{ secrets.TARGET_NAME }}/ || true
 
     - name: Commit & push to target repository
       run: |
-        cd ${{ secrets.TARGET_NAMETS }}
+        cd ${{ secrets.TARGET_NAME }}
         git config user.name "${{ secrets.TARGET_REPO_USER }}"
         git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"
         git add .
-        git commit -m "🔄 Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+        git commit -m "Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
         git push
