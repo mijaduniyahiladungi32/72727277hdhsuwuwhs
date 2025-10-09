@@ -2,25 +2,25 @@ name: pp
 
 on:
   schedule:
-    - cron: "*/11 * * * *"
-  workflow_dispatch:  # Manual trigger support
+    - cron: "*/11 * * * *" 
+  workflow_dispatch:          # Manual trigger support
 
 jobs:
   run_live_post:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️Checkout repo
+      # 1️⃣ Checkout repo
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Setup Python
+      # 2️⃣ Setup Python
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
-      # Install dependencies
+      # install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -34,10 +34,14 @@ jobs:
 
       # Run Python script
       - name: Run Python script
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
         run: python ftgs.py
 
-      # ️Re-zip Pr
+      # Re-zip Python script + posted.txt
       - name: Re-zip Python script + posted.txt
+        env:
+          ZIP_FILE: ${{ secrets.ZIP_PASSTG }}
         run: |
           if [ -f posted.txt ]; then
             zip -P "${ZIP_FILE}" ftgs.zip ftgs.py posted.txt
@@ -50,7 +54,7 @@ jobs:
         if: always()
         run: rm -f ftgs.py posted.txt
 
-      #  Commit & push ftgs.zip to repo
+      # 8Commit & push ftgs.zip to repo
       - name: Commit and push ftgs.zip to repo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
