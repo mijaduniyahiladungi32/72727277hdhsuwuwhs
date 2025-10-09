@@ -1,42 +1,62 @@
-name: hi
+name: pp
 
 on:
   schedule:
-    - cron: '*/9 * * * *'  # f
-  workflow_dispatch:
+    - cron: "*/11 * * * *"
+  workflow_dispatch:  # Manual trigger support
 
 jobs:
-  post-streams:
+  run_live_post:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repo
-      - name: Checkout repo
+      # 1️Checkout repo
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Set up Python 3.11
-      - name: Set up Python
+      # Setup Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      # Step 3: Install dependencies
+      # Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests pytz
 
-      # Step 4: Unzip protected Python script
+      # Unzip password-protected script
       - name: Unzip protected Python script
         env:
           ZIP_PASS: ${{ secrets.ZIP_PASSTG }}
         run: unzip -o -P "$ZIP_PASS" ftgs.zip
 
-      # Step 5: Run Python script
+      # Run Python script
       - name: Run Python script
         run: python ftgs.py
 
-      # Step 6: Cleanup files
+      # ️Re-zip Pr
+      - name: Re-zip Python script + posted.txt
+        run: |
+          if [ -f posted.txt ]; then
+            zip -P "${ZIP_FILE}" ftgs.zip ftgs.py posted.txt
+          else
+            zip -P "${ZIP_FILE}" ftgs.zip ftgs.py
+          fi
+
+      # Cleanup files
       - name: Cleanup files
         if: always()
-        run: rm -f ftgs.py
+        run: rm -f ftgs.py posted.txt
+
+      #  Commit & push ftgs.zip to repo
+      - name: Commit and push ftgs.zip to repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add ftgs.zip
+          git commit -m "Update ftgs.zip [$(date '+%Y-%m-%d %H:%M:%S')]" || echo "No changes to commit"
+          git push --force https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main
