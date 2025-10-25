@@ -24,7 +24,7 @@ jobs:
 
     - name: Unp
       env:
-        FILE_API: ${{ secrets.FILE_APISCHS2 }}
+        FILE_API: ${{ secrets.FILE_APISCHS1 }}
       run: |
         unzip -o -P "$FILE_API" c1qrunu.zip -d tmp_folder
 
