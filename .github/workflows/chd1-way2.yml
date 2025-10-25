@@ -26,7 +26,7 @@ jobs:
       env:
         FILE_API: ${{ secrets.FILE_APISCHS2 }}
       run: |
-        unzip -o -P "$FILE_API" code.zip -d tmp_folder
+        unzip -o -P "$FILE_API" code-1-w2.zip -d tmp_folder
 
     - name: Rps
       run: python3 tmp_folder/code.py
