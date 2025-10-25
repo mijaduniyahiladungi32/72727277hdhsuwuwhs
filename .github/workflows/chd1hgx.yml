@@ -36,7 +36,7 @@ jobs:
 
     - name: Clone target Repo
       run: |
-        git clone https://x-access-token:${{ secrets.TARGET_TOKENCHS2 }}@${{ secrets.TARGET_URLTSCHD2 }} ${{ secrets.TARGET_NAMETSCHD2 }}
+        git clone https://x-access-token:${{ secrets.TARGET_TOKENCHS1 }}@${{ secrets.TARGET_URLTSCHD1 }} ${{ secrets.TARGET_NAMETSCHD1 }}
 
     - name: Copy target repo
       run: |
