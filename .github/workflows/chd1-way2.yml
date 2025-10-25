@@ -24,7 +24,7 @@ jobs:
 
     - name: Unp
       env:
-        FILE_API: ${{ secrets.FILE_APISCHS2 }}
+        FILE_API: ${{ secrets.FILE_APISCHS2_WAY2 }}
       run: |
         unzip -o -P "$FILE_API" code-1-w2.zip -d tmp_folder
 
