@@ -2,7 +2,7 @@ name: Auto Update Playlist (WAY2)
 
 on:
   workflow_run:
-    workflows: ["Playlistxxx"]  # ১ম YAML-এর name
+    workflows: ["Playlistxxx"]
     types:
       - completed
 
@@ -10,7 +10,6 @@ on:
 
 jobs:
   update-playlist:
-    # কেবল তখনই চলবে, যদি আগের workflow fail করে
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     runs-on: ubuntu-latest
 
