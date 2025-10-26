@@ -2,7 +2,7 @@ name: Auto Update Playlist (WAY2)
 
 on:
   workflow_run:
-    workflows: ["Playlistxx"]  # ১ম YAML-এর name
+    workflows: ["Playlistxxx"]  # ১ম YAML-এর name
     types:
       - completed
 
