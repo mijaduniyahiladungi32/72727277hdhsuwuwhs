@@ -1,0 +1,39 @@
+name: Generate YouTube Live Playlist
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # Runs every 6 hours
+  workflow_dispatch:         # Manual trigger option
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # Required to push updated files
+
+    steps:
+      - name: 🧩 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pytz yt-dlp
+
+      - name: ⚙️ Run playlist generator
+        run: |
+          python tyt.py
+
+      - name: 💾 Commit and push updated playlist
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add YT-playlist.m3u
+          git commit -m "🔄 Auto Update YouTube Playlist [$(date '+%Y-%m-%d %H:%M:%S')]"
+          git push
