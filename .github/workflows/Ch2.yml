@@ -1,0 +1,53 @@
+name: ch2
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # Every 30 hours
+  workflow_dispatch:
+
+jobs:
+  update-playlist:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout this repository
+      uses: actions/checkout@v3
+
+    - name: Install Python dependencies
+      run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+    - name: Create fld
+      run: mkdir tmp_folder
+
+    - name: Unp
+      env:
+        FILE_API: ${{ secrets.FILE_APISCHS1 }}
+      run: |
+        unzip -o -P "$FILE_API" c1qrunu2s.zip -d tmp_folder
+
+    - name: Rps
+      run: python3 tmp_folder/c1qrunu2s.py
+
+    - name: DARS
+      if: always()
+      run: rm -rf tmp_folder
+
+    - name: Clone target Repo
+      run: |
+        git clone https://x-access-token:${{ secrets.TARGET_TOKEN2 }}@${{ secrets.TARGET_URL }} ${{ secrets.TARGET_NAME }}
+        
+    - name: Copy target repo
+      run: |
+        cp *.json ${{ secrets.TARGET_NAMETS1 }}/ || true
+        cp *.m3u ${{ secrets.TARGET_NAMETSCHD1 }}/ || true
+
+    - name: Commit & push to target repository
+      run: |
+        cd ${{ secrets.TARGET_NAMETSCHD1 }}
+        git config user.name "${{ secrets.TARGET_REPO_USER }}"
+        git config user.email "${{ secrets.TARGET_REPO_USER }}@users.noreply.github.com"
+        git add .
+        git commit -m " Auto update playlist on $(date '+%Y-%m-%d %H:%M:%S')"
+        git push
