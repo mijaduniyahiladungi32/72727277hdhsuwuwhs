@@ -2,7 +2,7 @@ name: Playlistxxx
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Every 30 hours
+    - cron: '*/10 * * * *'  # Every 30 hours
   workflow_dispatch:
 
 jobs:
